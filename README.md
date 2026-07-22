@@ -1,4 +1,4 @@
-# 🚗 GoGig Media Processor
+# Vehicle Image Processor
 
 An intelligent, production-grade media processing pipeline that analyzes field-uploaded vehicle photos, extracts license plate numbers via Optical Character Recognition (OCR), detects registration patterns, and reports inspection results—all accessible through a clean, unified web dashboard.
 
