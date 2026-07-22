@@ -1,184 +1,439 @@
-# Vehicle Image Processor
+#  GoGig Vehicle Image Processing System
 
-An intelligent, production-grade media processing pipeline that analyzes field-uploaded vehicle photos, extracts license plate numbers via Optical Character Recognition (OCR), detects registration patterns, and reports inspection results—all accessible through a clean, unified web dashboard.
-
----
-
-## 📋 Table of Contents
-
-1. [Overview](#-overview)
-2. [Key Features](#-key-features)
-3. [Project Structure](#-project-structure)
-4. [Technologies Used](#-technologies-used)
-5. [Getting Started](#-getting-started)
-6. [Environment Variables](#-environment-variables)
-7. [API Reference](#-api-reference)
-8. [Docker Deployment](#-docker-deployment)
+An intelligent vehicle image inspection system that analyzes uploaded vehicle images, performs multiple quality checks, extracts vehicle registration numbers using OCR, validates Indian number plate formats, and displays a detailed inspection report through an interactive dashboard.
 
 ---
 
-## 🔍 Overview
+# Features
 
-The **GoGig Media Processor** is built to process vehicle photos uploaded by field agents or users. It passes incoming images through an automated processing pipeline that detects vehicle registration numbers (OCR), validates plate formats, and stores structured metadata in MongoDB.
+The application performs the following inspections:
 
-The application features a **unified single-server architecture** where the Express backend serves both the REST API and the interactive frontend dashboard from the `public/` folder.
+- Duplicate Image Detection
+- Brightness Analysis
+- Blur Detection
+- Image Dimension Validation
+- Metadata Analysis
+- Vehicle Plate Detection
+- OCR using Tesseract.js
+- Indian Number Plate Validation
+- Interactive Dashboard
+- Background Processing using BullMQ
+- MongoDB Result Storage
 
 ---
 
-## 🛠 Key Features
+# Architecture
 
-* **License Plate Recognition (OCR)**: Uses `Tesseract.js` combined with `Sharp` and `OpenCV.js` image pre-processing for license plate extraction.
-* **Unified Web Dashboard**: Interactive UI hosted directly from `public/index.html` for uploading images and monitoring real-time processing status.
-* **Asynchronous Queue Engine**: Utilizes `BullMQ` and `Redis` for background job processing, with automatic standalone fallback if Redis is offline.
-* **Single Command Execution**: Run both frontend and backend seamlessly using `npm start`.
+The project follows a modular architecture.
+
+```
+                    User
+                      │
+                      ▼
+            HTML/CSS/JavaScript UI
+                      │
+                      ▼
+              Express REST API
+                      │
+             Image Upload (Multer)
+                      │
+                      ▼
+                 MongoDB Record
+                      │
+                      ▼
+              BullMQ + Redis Queue
+                      │
+                      ▼
+             Background Worker
+                      │
+   ┌───────────┬────────────┬────────────┐
+   │           │            │            │
+Duplicate   Brightness     Blur     Metadata
+Detection   Analysis     Detection  Analysis
+   │
+   ▼
+Plate Crop
+   │
+   ▼
+OCR
+   │
+   ▼
+Plate Validation
+   │
+   ▼
+MongoDB Update
+   │
+   ▼
+Frontend Dashboard
+```
 
 ---
 
-## 📁 Project Structure
+# Service Flow
+
+1. User uploads an image through the web interface.
+2. Express receives the request.
+3. Multer stores the uploaded image.
+4. Image information is saved in MongoDB.
+5. BullMQ creates a background processing job.
+6. Worker starts processing the image.
+7. All inspection modules execute sequentially.
+8. OCR extracts vehicle registration number.
+9. Results are stored in MongoDB.
+10. Frontend continuously polls the API.
+11. Inspection report is displayed.
+
+---
+
+# Processing Flow
+
+Every uploaded image passes through the following stages.
+
+## 1. Duplicate Detection
+
+- Generate perceptual hash
+- Compare hash with previous images
+- Detect duplicate uploads
+
+---
+
+## 2. Brightness Detection
+
+Calculates brightness score.
+
+Classification:
+
+- Too Dark
+- Well-lit
+- Too Bright
+
+---
+
+## 3. Blur Detection
+
+Uses Laplacian Variance.
+
+Classification:
+
+- Sharp
+- Slightly Blurry
+- Blurry
+
+---
+
+## 4. Dimension Validation
+
+Reads
+
+- Width
+- Height
+- Aspect Ratio
+
+---
+
+## 5. Metadata Analysis
+
+Reads EXIF metadata including
+
+- Camera
+- Model
+- Software
+- Capture Date
+
+Determines whether image appears edited.
+
+---
+
+## 6. Plate Crop
+
+Detects probable vehicle plate region.
+
+---
+
+## 7. OCR
+
+Uses Tesseract.js to extract text.
+
+---
+
+## 8. Plate Validation
+
+Validates Indian vehicle registration format.
+
+Extracts
+
+- State Code
+- District Code
+- Series
+- Vehicle Number
+
+---
+
+## 9. Database Update
+
+Stores
+
+- Inspection Result
+- OCR Output
+- Metadata
+- Processing Time
+- Status
+
+ # Queue Strategy
+
+The application uses **BullMQ** with **Redis** to process uploaded images asynchronously.
+
+Workflow:
+
+```
+Upload Image
+      │
+      ▼
+ Express API
+      │
+      ▼
+ BullMQ Queue
+      │
+      ▼
+ Background Worker
+      │
+      ▼
+ Image Processing
+      │
+      ▼
+ MongoDB Update
+      │
+      ▼
+ Dashboard Result
+```
+
+# Major Design Decisions
+
+## Modular Design
+
+Each inspection module is separated into its own utility.
+
+Examples:
+
+- Duplicate Detection
+- Blur Detection
+- Brightness Detection
+- OCR
+- Metadata Analysis
+- Plate Validation
+
+This improves maintainability and testing.
+
+---
+
+## Background Processing
+
+Image processing runs inside BullMQ workers rather than inside API requests.
+
+Advantages:
+
+- Faster uploads
+- Better user experience
+- Non-blocking API
+- Easier scalability
+
+---
+
+## MongoDB Storage
+
+MongoDB stores
+
+- Image information
+- Inspection results
+- OCR text
+- Metadata
+- Processing status
+- Processing time
+
+---
+
+## Frontend
+
+The frontend is a lightweight HTML/CSS/JavaScript dashboard served directly from Express.
+
+No frontend framework is required.
+
+---
+
+# Project Structure
 
 ```
 gogig-media-processor/
 │
-├── package.json                         # Node.js dependencies & scripts
-├── Dockerfile                           # Docker container build script
-├── docker-compose.yml                   # Docker Compose multi-container setup
-├── .env                                 # Environment configuration file
+├── package.json
+├── Dockerfile
+├── docker-compose.yml
+├── .env
 │
-├── public/                              # Unified Frontend (Web Dashboard)
-│   └── index.html                       # Upload UI & real-time result dashboard
+├── public/
+│   ├── index.html
+│   ├── css/
+│   └── js/
 │
-├── src/                                 # Backend Source Code
-│   ├── config/                          # Database (MongoDB) & Redis config
-│   │   ├── db.js
-│   │   └── redis.js
-│   ├── controllers/                     # Endpoint handler logic
-│   │   └── imageController.js
-│   ├── models/                          # Mongoose data schemas
-│   │   └── Image.js
-│   ├── routes/                          # Express API routes
-│   │   └── imageRoutes.js
-│   ├── services/                        # Core OCR & image processing logic
-│   │   ├── ocrService.js
-│   │   └── opencvService.js
-│   ├── workers/                         # BullMQ background job processing workers
-│   │   └── imageWorker.js
-│   ├── app.js                           # Express application & static server config
-│   └── server.js                        # Server entry point
+├── uploads/
 │
-└── uploads/                             # Local image storage directory
+├── src/
+│
+├── config/
+│   ├── db.js
+│   └── redis.js
+│
+├── controllers/
+│
+├── middleware/
+│
+├── models/
+│
+├── queue/
+│
+├── routes/
+│
+├── utils/
+│   ├── brightness.js
+│   ├── blur.js
+│   ├── dimension.js
+│   ├── hash.js
+│   ├── metadata.js
+│   ├── ocr.js
+│   ├── plateCrop.js
+│   └── plateValidator.js
+│
+├── workers/
+│   └── imageWorker.js
+│
+├── app.js
+└── server.js
 ```
 
 ---
 
-## 💻 Technologies Used
+# Technologies Used
 
-### Backend & Processing
-* **Node.js** (v18+) & **Express.js** v5 — Web server framework
-* **MongoDB Atlas** + **Mongoose** — Data persistence
-* **Tesseract.js** — OCR engine for reading plate characters
-* **Sharp** & **OpenCV.js** (`@techstark/opencv-js`) — Image enhancement & cropping
-* **BullMQ** & **Redis** — Asynchronous job queue processing
-* **Multer** — Multipart file upload handling
+## Backend
 
-### Frontend
-* **HTML5 / Vanilla JavaScript** — Lightweight, responsive web dashboard served directly via Express (`public/index.html`).
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- BullMQ
+- Redis
+- Multer
 
----
+## Image Processing
 
-## 🚀 Getting Started
+- Sharp
+- Tesseract.js
 
-### Prerequisites
-* **Node.js** (v18 or higher installed)
-* **MongoDB** (Local instance or MongoDB Atlas URI)
-* *(Optional)* **Redis** server for queue support (App automatically runs in direct execution mode if Redis is offline)
+## Frontend
 
-### Installation & Run Steps
-
-1. **Navigate to the project directory**:
-   ```bash
-   cd gogig-media-processor/gogig-media-processor
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Configure Environment Variables**:
-   Create a `.env` file in the root directory (see section below).
-
-4. **Start the application**:
-   ```bash
-   npm start
-   ```
-
-5. **Access the Dashboard**:
-   Open your browser and navigate to:
-   ```
-   http://localhost:5000
-   ```
+- HTML5
+- CSS3
+- JavaScript
 
 ---
 
-## ⚙️ Environment Variables
+# Installation
 
-Create a `.env` file in `gogig-media-processor/gogig-media-processor/.env`:
+Clone repository
+
+```bash
+git clone <repository-url>
+```
+
+Install packages
+
+```bash
+npm install
+```
+
+Create `.env`
 
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/gogig_media_processor
+MONGO_URI=your_mongodb_connection_string
 REDIS_URL=redis://localhost:6379
-NODE_ENV=development
 ```
 
----
-
-## 📡 API Reference
-
-### 1. Upload Image for Processing
-* **Endpoint**: `POST /api/images/upload`
-* **Content-Type**: `multipart/form-data`
-* **Body**: `image` (File)
-* **Response**:
-  ```json
-  {
-    "success": true,
-    "imageId": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "message": "Image uploaded and queued for processing"
-  }
-  ```
-
-### 2. Check Processing Status & Results
-* **Endpoint**: `GET /api/images/status/:imageId`
-* **Response**:
-  ```json
-  {
-    "success": true,
-    "status": "completed",
-    "extractedText": "MH12AB1234",
-    "plateNumber": "MH12AB1234",
-    "plateDetectionReason": "Valid Registration Format"
-  }
-  ```
-
-### 3. Server Health Check
-* **Endpoint**: `GET /api/health`
-* **Response**:
-  ```json
-  {
-    "success": true,
-    "message": "GoGig Media Processor API Running"
-  }
-  ```
-
----
-
-## 🐳 Docker Deployment
-
-To build and run the application using Docker:
+Start project
 
 ```bash
-docker-compose up --build
+npm start
 ```
 
-The application will be accessible at `http://localhost:5000`.
+Open
+
+```
+http://localhost:5000
+```
+
+---
+
+# API Endpoints
+
+## Upload Image
+
+```
+POST /api/upload
+```
+
+Request
+
+```
+multipart/form-data
+
+image
+```
+
+Response
+
+```json
+{
+    "success": true,
+    "imageId": "...",
+    "status": "pending"
+}
+```
+
+---
+
+## Get Inspection Result
+
+```
+GET /api/images/:imageId
+```
+
+Returns
+
+- Processing Status
+- Inspection Report
+- OCR Result
+- Plate Details
+- Metadata
+- Processing Time
+
+---
+
+## Health Check
+
+```
+GET /health
+```
+
+Returns server status.
+
+# AI Usage Disclosure
+
+Artificial Intelligence was used as a development assistant during this project. Specifically, it was used to:
+
+- Generate and improve project documentation (README).
+- Refine frontend UI text and styling suggestions.
+- Explain technical concepts and provide implementation guidance.
+- Assist with debugging by suggesting possible fixes and improvements.
+- Help refactor code for better readability and maintainability.
+
+Every AI-generated suggestion was reviewed, modified where necessary, and validated before being incorporated into the final application.
