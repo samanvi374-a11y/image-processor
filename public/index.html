@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GoGig Media Processor</title>
+    <style>
+      :root {
+        --bg: #07111f;
+        --panel: #10233d;
+        --panel-2: #16324e;
+        --accent: #4fc3f7;
+        --text: #f4f7fb;
+        --muted: #9fb4c8;
+        --success: #2ecc71;
+        --danger: #ff6b6b;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, var(--bg), #0e1d2e);
+        color: var(--text);
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 20px 60px;
+      }
+      .card {
+        background: rgba(16, 35, 61, 0.95);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+      }
+      h1 { margin: 0 0 8px; font-size: 2rem; }
+      p { color: var(--muted); }
+      .dropzone {
+        border: 2px dashed var(--accent);
+        border-radius: 16px;
+        padding: 24px;
+        text-align: center;
+        margin: 20px 0;
+        background: rgba(79,195,247,0.08);
+      }
+      input[type="file"] { margin-top: 10px; }
+      button {
+        margin-top: 12px;
+        background: var(--accent);
+        color: #062032;
+        border: 0;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:disabled { opacity: 0.6; cursor: not-allowed; }
+      .result-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 20px;
+      }
+      .panel {
+        background: var(--panel-2);
+        border-radius: 14px;
+        padding: 16px;
+      }
+      .label { color: var(--muted); font-size: 0.9rem; }
+      .value { font-size: 1.05rem; font-weight: 700; margin-top: 6px; }
+      .image-preview {
+        max-width: 100%;
+        border-radius: 12px;
+        margin-top: 12px;
+        display: none;
+      }
+      .status { margin-top: 10px; font-weight: 700; }
+      .status.success { color: var(--success); }
+      .status.error { color: var(--danger); }
+      .small { font-size: 0.95rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>GoGig Media Processor</h1>
+        <p>Upload an image and process it through the OCR pipeline.</p>
+
+        <div class="dropzone">
+          <input id="imageInput" type="file" accept="image/*" />
+          <div class="small">Choose an image or cropped number plate photo.</div>
+          <button id="proceedBtn">Proceed</button>
+        </div>
+
+        <div id="status" class="status">Waiting for upload...</div>
+        <img id="preview" class="image-preview" alt="Preview" />
+
+        <div class="result-grid">
+          <div class="panel">
+            <div class="label">Status</div>
+            <div id="statusValue" class="value">Pending</div>
+          </div>
+          <div class="panel">
+            <div class="label">Extracted Text</div>
+            <div id="textValue" class="value">-</div>
+          </div>
+          <div class="panel">
+            <div class="label">Plate Number</div>
+            <div id="plateValue" class="value">-</div>
+          </div>
+          <div class="panel">
+            <div class="label">Reason</div>
+            <div id="reasonValue" class="value">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const imageInput = document.getElementById('imageInput');
+      const proceedBtn = document.getElementById('proceedBtn');
+      const preview = document.getElementById('preview');
+      const status = document.getElementById('status');
+      const statusValue = document.getElementById('statusValue');
+      const textValue = document.getElementById('textValue');
+      const plateValue = document.getElementById('plateValue');
+      const reasonValue = document.getElementById('reasonValue');
+
+      imageInput.addEventListener('change', () => {
+        const file = imageInput.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      });
+
+      proceedBtn.addEventListener('click', async () => {
+        const file = imageInput.files[0];
+        if (!file) {
+          status.textContent = 'Please choose an image first.';
+          status.className = 'status error';
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        proceedBtn.disabled = true;
+        status.textContent = 'Uploading and processing image...';
+        status.className = 'status';
+
+        try {
+          const uploadRes = await fetch('/api/images/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const uploadData = await uploadRes.json();
+          if (!uploadRes.ok) throw new Error(uploadData.message || 'Upload failed');
+
+          const imageId = uploadData.imageId;
+          statusValue.textContent = 'Processing';
+          textValue.textContent = 'Waiting for OCR...';
+          plateValue.textContent = '-';
+          reasonValue.textContent = '-';
+
+          let attempts = 0;
+          const poll = async () => {
+            const res = await fetch(`/api/images/status/${imageId}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Status check failed');
+
+            statusValue.textContent = data.status || 'Processing';
+            textValue.textContent = data.extractedText || '-';
+            plateValue.textContent = data.plateNumber || '-';
+            reasonValue.textContent = data.plateDetectionReason || '-';
+
+            if (data.status === 'completed' || data.status === 'failed') {
+              status.textContent = data.status === 'completed' ? 'Processing complete' : 'Processing failed';
+              status.className = `status ${data.status === 'completed' ? 'success' : 'error'}`;
+              proceedBtn.disabled = false;
+              return;
+            }
+
+            attempts += 1;
+            if (attempts >= 30) {
+              status.textContent = 'Processing is taking too long.';
+              status.className = 'status error';
+              proceedBtn.disabled = false;
+              return;
+            }
+
+            setTimeout(poll, 2000);
+          };
+
+          poll();
+        } catch (error) {
+          status.textContent = error.message;
+          status.className = 'status error';
+          proceedBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
