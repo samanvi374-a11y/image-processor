@@ -263,7 +263,15 @@
           body: formData
         });
 
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
+        let data = {};
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(`Server returned non-JSON response (${res.status}): ${res.statusText}`);
+        }
+
         if (!res.ok) throw new Error(data.message || 'Upload failed');
 
         const imageId = data.imageId;
@@ -282,8 +290,10 @@
       pollInterval = setInterval(async () => {
         try {
           const res = await fetch(`/api/images/status/${imageId}`);
-          const data = await res.json();
+          const contentType = res.headers.get('content-type') || '';
+          if (!contentType.includes('application/json')) return;
 
+          const data = await res.json();
           const img = data.image || data;
 
           if (img) {
