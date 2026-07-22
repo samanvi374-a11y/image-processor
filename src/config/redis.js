@@ -2,10 +2,15 @@ const Redis = require("ioredis");
 
 let redis;
 
+const redisOptions = {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+};
+
 if (process.env.REDIS_URL) {
   const isTls = process.env.REDIS_URL.startsWith("rediss://");
   redis = new Redis(process.env.REDIS_URL, {
-    maxRetriesPerRequest: null,
+    ...redisOptions,
     ...(isTls && { tls: { rejectUnauthorized: false } }),
   });
 } else {
@@ -13,7 +18,7 @@ if (process.env.REDIS_URL) {
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: process.env.REDIS_PORT ? parseInt(process.env.REDIS_PORT, 10) : 6379,
     password: process.env.REDIS_PASSWORD || undefined,
-    maxRetriesPerRequest: null,
+    ...redisOptions,
   });
 }
 
