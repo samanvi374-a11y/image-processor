@@ -3,18 +3,23 @@ const helmet = require("helmet");
 const cors = require("cors");
 const morgan = require("morgan");
 const multer = require("multer");
+const path = require("path");
 
 const imageRoutes = require("./routes/imageRoutes");
 const Image = require("./models/Image");
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(morgan("dev"));
 app.use(express.json());
 
-app.get("/", (req, res) => {
+// Serve static frontend files from public/
+app.use(express.static(path.join(__dirname, "../public")));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+
+app.get("/api/health", (req, res) => {
   res.json({
     success: true,
     message: "GoGig Media Processor API Running",
@@ -30,6 +35,10 @@ app.get("/api/images/status/:imageId", async (req, res) => {
 
     return res.json({
       success: true,
+      status: image.status,
+      extractedText: image.extractedText || "",
+      plateNumber: image.plateNumber || "",
+      plateDetectionReason: image.plateDetectionReason || "",
       image,
     });
   } catch (error) {
@@ -38,6 +47,14 @@ app.get("/api/images/status/:imageId", async (req, res) => {
 });
 
 app.use("/api/images", imageRoutes);
+
+// Fallback to serve index.html for non-API web requests
+app.use((req, res, next) => {
+  if (req.method === "GET" && !req.path.startsWith("/api")) {
+    return res.sendFile(path.join(__dirname, "../public/index.html"));
+  }
+  next();
+});
 
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {

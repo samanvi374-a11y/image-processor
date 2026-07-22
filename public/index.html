@@ -1,210 +1,386 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GoGig Media Processor</title>
-    <style>
-      :root {
-        --bg: #07111f;
-        --panel: #10233d;
-        --panel-2: #16324e;
-        --accent: #4fc3f7;
-        --text: #f4f7fb;
-        --muted: #9fb4c8;
-        --success: #2ecc71;
-        --danger: #ff6b6b;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, var(--bg), #0e1d2e);
-        color: var(--text);
-        min-height: 100vh;
-      }
-      .container {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 32px 20px 60px;
-      }
-      .card {
-        background: rgba(16, 35, 61, 0.95);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.22);
-      }
-      h1 { margin: 0 0 8px; font-size: 2rem; }
-      p { color: var(--muted); }
-      .dropzone {
-        border: 2px dashed var(--accent);
-        border-radius: 16px;
-        padding: 24px;
-        text-align: center;
-        margin: 20px 0;
-        background: rgba(79,195,247,0.08);
-      }
-      input[type="file"] { margin-top: 10px; }
-      button {
-        margin-top: 12px;
-        background: var(--accent);
-        color: #062032;
-        border: 0;
-        padding: 12px 18px;
-        border-radius: 999px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      button:disabled { opacity: 0.6; cursor: not-allowed; }
-      .result-grid {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        margin-top: 20px;
-      }
-      .panel {
-        background: var(--panel-2);
-        border-radius: 14px;
-        padding: 16px;
-      }
-      .label { color: var(--muted); font-size: 0.9rem; }
-      .value { font-size: 1.05rem; font-weight: 700; margin-top: 6px; }
-      .image-preview {
-        max-width: 100%;
-        border-radius: 12px;
-        margin-top: 12px;
-        display: none;
-      }
-      .status { margin-top: 10px; font-weight: 700; }
-      .status.success { color: var(--success); }
-      .status.error { color: var(--danger); }
-      .small { font-size: 0.95rem; color: var(--muted); }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="card">
-        <h1>GoGig Media Processor</h1>
-        <p>Upload an image and process it through the OCR pipeline.</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoGig Media Processor</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+    }
 
-        <div class="dropzone">
-          <input id="imageInput" type="file" accept="image/*" />
-          <div class="small">Choose an image or cropped number plate photo.</div>
-          <button id="proceedBtn">Proceed</button>
-        </div>
+    body {
+      background: #eef2f7;
+    }
 
-        <div id="status" class="status">Waiting for upload...</div>
-        <img id="preview" class="image-preview" alt="Preview" />
+    .app-shell {
+      max-width: 1100px;
+      margin: 40px auto;
+      padding: 20px;
+    }
 
-        <div class="result-grid">
-          <div class="panel">
-            <div class="label">Status</div>
-            <div id="statusValue" class="value">Pending</div>
-          </div>
-          <div class="panel">
-            <div class="label">Extracted Text</div>
-            <div id="textValue" class="value">-</div>
-          </div>
-          <div class="panel">
-            <div class="label">Plate Number</div>
-            <div id="plateValue" class="value">-</div>
-          </div>
-          <div class="panel">
-            <div class="label">Reason</div>
-            <div id="reasonValue" class="value">-</div>
-          </div>
-        </div>
+    .hero-card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .hero-heading {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .eyebrow {
+      color: #2563eb;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .hero-heading h1 {
+      color: #1e293b;
+      margin-bottom: 10px;
+    }
+
+    .subtext {
+      color: #64748b;
+    }
+
+    .upload-card input {
+      width: 70%;
+      display: block;
+      margin: auto;
+      padding: 12px;
+      border: 2px dashed #3b82f6;
+      border-radius: 12px;
+      background: #f8fbff;
+      cursor: pointer;
+    }
+
+    .preview {
+      width: 300px;
+      height: 220px;
+      margin: 20px auto;
+      display: block;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    button {
+      width: 220px;
+      display: block;
+      margin: 20px auto;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: #2563eb;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .processing {
+      margin-top: 20px;
+      color: #2563eb;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .error-text {
+      margin-top: 15px;
+      color: #dc2626;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .result-card {
+      background: white;
+      margin-top: 30px;
+      padding: 25px;
+      border-radius: 18px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      display: none;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .result-header h2 {
+      color: #1e293b;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      border-radius: 20px;
+      color: white;
+      font-weight: bold;
+      text-transform: capitalize;
+    }
+
+    .success {
+      background: #16a34a;
+    }
+
+    .danger {
+      background: #dc2626;
+    }
+
+    .neutral {
+      background: #64748b;
+    }
+
+    .stats-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .stat-box {
+      background: #f8fafc;
+      padding: 18px;
+      border-radius: 12px;
+      border-left: 5px solid #2563eb;
+    }
+
+    .label {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .value {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+
+    .value p {
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .result-header {
+        flex-direction: column;
+        gap: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="hero-card">
+      <div class="hero-heading">
+        <p class="eyebrow">GoGig Media Processor</p>
+        <h1>Upload an image and review the full OCR analysis.</h1>
+        <p class="subtext">This view shows the complete image processing pipeline.</p>
+      </div>
+
+      <div class="upload-card">
+        <input type="file" id="imageInput" accept="image/*" />
+        <img id="preview" class="preview" alt="preview" style="display: none;" />
+        <button id="uploadBtn">Proceed</button>
+        <p id="errorText" class="error-text" style="display: none;"></p>
       </div>
     </div>
 
-    <script>
-      const imageInput = document.getElementById('imageInput');
-      const proceedBtn = document.getElementById('proceedBtn');
-      const preview = document.getElementById('preview');
-      const status = document.getElementById('status');
-      const statusValue = document.getElementById('statusValue');
-      const textValue = document.getElementById('textValue');
-      const plateValue = document.getElementById('plateValue');
-      const reasonValue = document.getElementById('reasonValue');
+    <div id="resultCard" class="result-card">
+      <div class="result-header">
+        <h2>Processing Result</h2>
+        <span id="statusPill" class="pill neutral">Pending</span>
+      </div>
 
-      imageInput.addEventListener('change', () => {
-        const file = imageInput.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          preview.src = e.target.result;
-          preview.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-      });
+      <div id="statsGrid" class="stats-grid">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
 
-      proceedBtn.addEventListener('click', async () => {
-        const file = imageInput.files[0];
-        if (!file) {
-          status.textContent = 'Please choose an image first.';
-          status.className = 'status error';
-          return;
-        }
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const preview = document.getElementById('preview');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const errorText = document.getElementById('errorText');
+    const resultCard = document.getElementById('resultCard');
+    const statusPill = document.getElementById('statusPill');
+    const statsGrid = document.getElementById('statsGrid');
 
-        const formData = new FormData();
-        formData.append('image', file);
+    let selectedFile = null;
+    let pollInterval = null;
 
-        proceedBtn.disabled = true;
-        status.textContent = 'Uploading and processing image...';
-        status.className = 'status';
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
 
+      selectedFile = file;
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = 'block';
+      errorText.style.display = 'none';
+      resultCard.style.display = 'none';
+      if (pollInterval) clearInterval(pollInterval);
+    });
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile) {
+        errorText.textContent = 'Please select an image first.';
+        errorText.style.display = 'block';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', selectedFile);
+
+      try {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Processing...';
+        errorText.style.display = 'none';
+        resultCard.style.display = 'none';
+
+        const res = await fetch('/api/images/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Upload failed');
+
+        const imageId = data.imageId;
+        startPolling(imageId);
+      } catch (err) {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Proceed';
+        errorText.textContent = err.message || 'Upload failed';
+        errorText.style.display = 'block';
+      }
+    });
+
+    function startPolling(imageId) {
+      if (pollInterval) clearInterval(pollInterval);
+
+      pollInterval = setInterval(async () => {
         try {
-          const uploadRes = await fetch('/api/images/upload', {
-            method: 'POST',
-            body: formData,
-          });
+          const res = await fetch(`/api/images/status/${imageId}`);
+          const data = await res.json();
 
-          const uploadData = await uploadRes.json();
-          if (!uploadRes.ok) throw new Error(uploadData.message || 'Upload failed');
+          const img = data.image || data;
 
-          const imageId = uploadData.imageId;
-          statusValue.textContent = 'Processing';
-          textValue.textContent = 'Waiting for OCR...';
-          plateValue.textContent = '-';
-          reasonValue.textContent = '-';
+          if (img) {
+            renderResults(img);
 
-          let attempts = 0;
-          const poll = async () => {
-            const res = await fetch(`/api/images/status/${imageId}`);
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Status check failed');
-
-            statusValue.textContent = data.status || 'Processing';
-            textValue.textContent = data.extractedText || '-';
-            plateValue.textContent = data.plateNumber || '-';
-            reasonValue.textContent = data.plateDetectionReason || '-';
-
-            if (data.status === 'completed' || data.status === 'failed') {
-              status.textContent = data.status === 'completed' ? 'Processing complete' : 'Processing failed';
-              status.className = `status ${data.status === 'completed' ? 'success' : 'error'}`;
-              proceedBtn.disabled = false;
-              return;
+            if (['completed', 'failed'].includes(img.status)) {
+              clearInterval(pollInterval);
+              uploadBtn.disabled = false;
+              uploadBtn.textContent = 'Proceed';
             }
-
-            attempts += 1;
-            if (attempts >= 30) {
-              status.textContent = 'Processing is taking too long.';
-              status.className = 'status error';
-              proceedBtn.disabled = false;
-              return;
-            }
-
-            setTimeout(poll, 2000);
-          };
-
-          poll();
-        } catch (error) {
-          status.textContent = error.message;
-          status.className = 'status error';
-          proceedBtn.disabled = false;
+          }
+        } catch (err) {
+          console.error('Polling error:', err);
         }
-      });
-    </script>
-  </body>
+      }, 2000);
+    }
+
+    function renderResults(img) {
+      resultCard.style.display = 'block';
+
+      // Status pill update
+      const status = img.status || 'pending';
+      statusPill.textContent = status;
+      statusPill.className = `pill ${status === 'completed' ? 'success' : status === 'failed' ? 'danger' : 'neutral'}`;
+
+      const metricCards = [
+        {
+          label: "Status",
+          value: img.status || "Pending"
+        },
+        {
+          label: "Duplicate Detection",
+          value: img.isDuplicate ? "Duplicate Image" : "Original Image"
+        },
+        {
+          label: "Image Quality",
+          value: `
+            <p>Brightness Score : ${img.brightnessScore ?? 0}</p>
+            <p>Brightness Status : ${img.brightnessStatus || "-"}</p>
+            <br/>
+            <p>Blur Score : ${img.blurScore ?? 0}</p>
+            <p>Blur Status : ${img.blurStatus || "-"}</p>
+          `
+        },
+        {
+          label: "Dimensions",
+          value: (img.imageWidth && img.imageHeight) ? `${img.imageWidth} × ${img.imageHeight}` : "-"
+        },
+        {
+          label: "OCR Text",
+          value: img.extractedText || "Not Found"
+        },
+        {
+          label: "Plate Number",
+          value: img.plateNumber || "Not Detected"
+        },
+        {
+          label: "Plate Valid",
+          value: img.plateValid ? "Yes" : "No"
+        },
+        {
+          label: "Reason & Possible Causes",
+          value: `
+            <p>${img.plateDetectionReason || "-"}</p>
+            ${(img.possibleCauses && img.possibleCauses.length > 0) ? `
+              <br/><p><strong>Possible Causes:</strong></p>
+              ${img.possibleCauses.map(c => `<p>${c}</p>`).join('')}
+            ` : ''}
+          `
+        },
+        {
+          label: "Metadata",
+          value: `
+            <p>Camera : ${img.camera || "-"}</p>
+            <p>Model : ${img.cameraModel || "-"}</p>
+            <p>Software : ${img.software || "-"}</p>
+            <p>Captured Date : ${img.capturedDate || "-"}</p>
+            <p>Status : ${img.metadataStatus || "-"}</p>
+          `
+        },
+        {
+          label: "Processing Time",
+          value: img.processingTime ? `${img.processingTime} ms` : "-"
+        },
+        {
+          label: "Error",
+          value: img.errorMessage || "-"
+        }
+      ];
+
+      statsGrid.innerHTML = metricCards.map(item => `
+        <div class="stat-box">
+          <div class="label">${item.label}</div>
+          <div class="value">${item.value}</div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
 </html>
